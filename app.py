@@ -57,10 +57,13 @@ def satisfaction():
         ]
         if email and all(answers_list):
            add_answers(email, answers_list)
-           return redirect(url_for('satisfaction'))
+           return redirect(url_for('already_submitted'))
     return render_template('satisfaction.html', questions=questions, enumerate=enumerate)
 
-
+#Rota para a página de agradecimento
+@app.route('/obrigado', methods=['GET'])
+def already_submitted():
+    return render_template('already_submitted.html')
 
 if __name__ == '__main__':
     configure_database()

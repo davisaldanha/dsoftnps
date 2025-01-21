@@ -14,7 +14,7 @@
             <div class="card-body">
                 <h1 class="card-title text-center mb-4">Pesquisa de Satisfação</h1>
                 <p class="text-center">Avalie sua experiência conosco. Sua opinião é muito importante!</p>
-                <form method="POST" action="/satisfacao">
+                <form method="POST" action="{{ url_for('satisfaction') }}">
                     <!-- Campo para e-mail -->
                     <div class="mb-3">
                         <label for="email" class="form-label">Digite seu e-mail</label>
