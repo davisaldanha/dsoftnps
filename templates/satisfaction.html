@@ -60,7 +60,15 @@
                             {% endfor %}
                         </div>
                     </div>
-                    {% endfor %}                    
+                    {% endfor %}   
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="consent" name="consent" required>
+                        <label for="consent" class="form-check-label">
+                            Eu concordo em fornecer meus dados para receber comunicações sobre ofertas e promoções, conforme a <a href="{{ url_for('privacy_policy') }}" target="_blank">Política de Privacidade</a>.
+                        </label>
+                    </div>
+                    
 
                     <!-- Botão para enviar -->
                     <div class="d-grid">

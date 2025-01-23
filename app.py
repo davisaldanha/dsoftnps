@@ -1,45 +1,60 @@
 from flask import Flask, request, render_template, redirect, url_for
-import smtplib
-import schedule
-import sqlite3
+import smtplib, schedule
+import sqlite3, logging, time
 
-#Excluir banco de dados
-def drop_database():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('DROP TABLE satisfaction')
-    conn.commit()
-    conn.close()
+logging.basicConfig(filename="lgpd_logs.log", level=logging.INFO)
+
+#Função para registrar logging
+def log_info(message, email, phone):
+    logging.info(f"{message} - Email: {email} - Phone: {phone} - Data: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
 
 #Configuração do banco de dados
 def configure_database():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute('''          
+        drop table if exists satisfaction
+    ''')
+    cursor.execute('''          
         CREATE TABLE IF NOT EXISTS satisfaction(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE,
             phone TEXT NOT NULL,
             p1 INTEGER, p2 INTEGER, p3 INTEGER, p4 INTEGER, p5 INTEGER,
-            p6 INTEGER, p7 INTEGER, p8 INTEGER, p9 INTEGER, p10 INTEGER
+            p6 INTEGER, p7 INTEGER, p8 INTEGER, p9 INTEGER, p10 INTEGER,
+            created_at DATE DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
     conn.close()
 
-def add_answers(email, answers):
+#Função para adicionar respostas ao banco de dados
+def add_answers(email, phone, answers):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO satisfaction(email, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)
-        ''', (email, *answers))
+            INSERT INTO satisfaction(email, phone, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+        ''', (email, phone, *answers))
         conn.commit()
+        log_info("Dados cadastrados com sucesso", email, phone)
     except sqlite3.IntegrityError:
         return redirect(url_for('already_submitted'))
     finally: 
         conn.close()
+
+#Função para limpar dados antigos do banco de dados
+#Agendar com schedule para rodar anualmente
+def clear_old_data():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        DELETE FROM emails WHERE DATE(created_at) < DATE('now', '-1 year')
+    ''')
+    conn.commit()
+    conn.close()
 
 app = Flask(__name__)
 
@@ -75,8 +90,12 @@ def satisfaction():
 def already_submitted():
     return render_template('already_submitted.html')
 
+#Rota para politica de privacidade
+@app.route('/politica-de-privacidade', methods=['GET'])
+def privacy_policy():
+    return render_template('privacy_policy.html')
+
 if __name__ == '__main__':
-    drop_database()
     configure_database()
     app.run(debug=True)
 
