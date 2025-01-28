@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, session, flash
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -18,6 +18,7 @@ def log_info(message, email, phone):
 def configure_database():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
+    #Tabela para armazenar os dados de satisfação
     cursor.execute('''          
         CREATE TABLE IF NOT EXISTS satisfaction(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,6 +29,22 @@ def configure_database():
             created_at DATE DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    #Tabela para armazenar os administradores
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admins(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        )
+    ''')
+
+    cursor.execute("SELECT * FROM admins WHERE username = ?", ("admin",))
+    if not cursor.fetchone():
+        cursor.execute('''
+            INSERT INTO admins(email, password)
+            VALUES(?,?)
+        ''', ("admin", "admin"))
+                   
     conn.commit()
     conn.close()
 
@@ -101,6 +118,7 @@ def send_email():
             
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY")
 
 #Rota para a página de satisfação do cliente
 @app.route('/satisfacao', methods=['GET', 'POST'])
@@ -138,6 +156,45 @@ def already_submitted():
 @app.route('/politica-de-privacidade', methods=['GET'])
 def privacy_policy():
     return render_template('privacy_policy.html')
+
+#Rota para login
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT * FROM admins WHERE email = ? AND password = ?
+        ''', (username, password))
+        admin = cursor.fetchone()
+        conn.close()
+
+        if admin:
+            session['admin'] = username
+            flash("Login efetuado com sucesso", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Usuário ou senha incorretos", "danger")
+    
+    return render_template('login')
+
+#Rota para logout
+@app.route('/logout', methods=['GET'])
+def logout():
+    session.pop('admin', None)
+    flash("Logout efetuado com sucesso", "success")
+    return redirect(url_for('login'))
+
+#Rota para dashboard
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    if 'admin' not in session:
+        flash("Faça login para acessar o dashboard", "danger")
+        return redirect(url_for('login'))
+    return render_template('dashboard.html')
 
 if __name__ == '__main__':
     configure_database()
