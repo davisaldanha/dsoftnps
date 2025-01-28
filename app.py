@@ -1,6 +1,11 @@
 from flask import Flask, request, render_template, redirect, url_for
+from dotenv import load_dotenv
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import smtplib, schedule
-import sqlite3, logging, time
+import sqlite3, logging, time, os
+
+load_dotenv()
 
 logging.basicConfig(filename="lgpd_logs.log", level=logging.INFO)
 
@@ -13,9 +18,6 @@ def log_info(message, email, phone):
 def configure_database():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('''          
-        drop table if exists satisfaction
-    ''')
     cursor.execute('''          
         CREATE TABLE IF NOT EXISTS satisfaction(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,6 +57,48 @@ def clear_old_data():
     ''')
     conn.commit()
     conn.close()
+
+#Função para obter os emails
+def get_emails():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT email FROM satisfaction
+    ''')
+    emails = cursor.fetchall()
+    conn.close()
+    return emails
+
+#Função para enviar email
+def send_email():
+    emails = get_emails()
+
+    if emails:
+        try:
+            with smtplib.SMTP(os.getenv("SMTP_HOST"), os.getenv("SMTP_PORT")) as server:
+                server.starttls()
+                server.login(os.getenv("EMAIL"), os.getenv("PASSWORD"))
+                    
+            for email_tuple in emails:
+                try:
+                    email = email_tuple[0]
+                    message = MIMEMultipart()
+                    message['From'] = os.getenv("EMAIL")
+                    message['TO'] = email
+                    message['Subject'] = 'Ofertas da Semana - Loja X'
+
+                    content = "<h1>Confira nossas ofertas da semana!</h1><p>Visite nossa loja para aproveitar.</p>"
+                    message.attach(MIMEText(content, 'html'))
+
+                
+                    server.sendmail(os.getenv("EMAIL"), email, message.as_string())
+                    log_info("Email enviado com sucesso", email, "N/A")
+                except Exception as e:
+                    log_info(f"Erro ao enviar emails: {e}", "N/A", "N/A")
+
+        except Exception as e:
+            log_info(f"Erro ao conectar ao servidor: {e}", "N/A", "N/A")
+            
 
 app = Flask(__name__)
 
@@ -97,5 +141,6 @@ def privacy_policy():
 
 if __name__ == '__main__':
     configure_database()
+    send_email()
     app.run(debug=True)
 
