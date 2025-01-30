@@ -18,6 +18,7 @@ def log_info(message, email, phone):
 def configure_database():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
+    #cursor.execute('''DROP TABLE IF EXISTS admins''')
     #Tabela para armazenar os dados de satisfação
     cursor.execute('''          
         CREATE TABLE IF NOT EXISTS satisfaction(
@@ -33,7 +34,7 @@ def configure_database():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS admins(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL UNIQUE,
+            username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL
         )
     ''')
@@ -41,7 +42,7 @@ def configure_database():
     cursor.execute("SELECT * FROM admins WHERE username = ?", ("admin",))
     if not cursor.fetchone():
         cursor.execute('''
-            INSERT INTO admins(email, password)
+            INSERT INTO admins(username, password)
             VALUES(?,?)
         ''', ("admin", "admin"))
                    
@@ -167,7 +168,7 @@ def login():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT * FROM admins WHERE email = ? AND password = ?
+            SELECT * FROM admins WHERE username = ? AND password = ?
         ''', (username, password))
         admin = cursor.fetchone()
         conn.close()
@@ -179,7 +180,7 @@ def login():
         else:
             flash("Usuário ou senha incorretos", "danger")
     
-    return render_template('login')
+    return render_template('login.html')
 
 #Rota para logout
 @app.route('/logout', methods=['GET'])
