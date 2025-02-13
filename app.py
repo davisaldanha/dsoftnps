@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask import Flask, request, render_template, redirect, url_for, session, flash, jsonify
 from dotenv import load_dotenv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -116,7 +116,6 @@ def send_email():
 
         except Exception as e:
             log_info(f"Erro ao conectar ao servidor: {e}", "N/A", "N/A")
-            
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
@@ -196,6 +195,38 @@ def dashboard():
         flash("Faça login para acessar o dashboard", "danger")
         return redirect(url_for('login'))
     return render_template('dashboard.html')
+
+@app.route('/nps-data')
+def nps_data():
+    con = sqlite3.connect('database.db')
+    cursor = con.cursor()
+    cursor.execute('''
+        SELECT p1 FROM satisfaction WHERE p1 IS NOT NULL
+    ''')
+    data = cursor.fetchall()
+    con.close()
+
+    if not data:
+        return {'nps':0, 'detractors': 0, 'passives': 0, 'promoters': 0}
+    
+    #Classificação conforme NPS
+    detractors = sum(1 for x in data if x[0] <= 6)
+    passives = sum(1 for x in data if 7 <= x[0] <= 8)
+    promoters = sum(1 for x in data if x[0] >= 10)
+
+    total_answers = len(data)
+    perc_det = (detractors / total_answers) * 100
+    perc_pas = (passives / total_answers) * 100
+    perc_pro = (promoters / total_answers) * 100
+    nps = perc_pro - perc_det
+
+    return {
+        'nps': nps,
+        'detractors': detractors,
+        'passives': passives,
+        'promoters': promoters
+    }
+
 
 if __name__ == '__main__':
     configure_database()
