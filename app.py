@@ -227,6 +227,41 @@ def nps_data():
         'promoters': promoters
     }
 
+@app.route('/radar-data')
+def radar_data():
+    con = sqlite3.connect('database.db')
+    cursor = con.cursor()
+
+    cursor.execute('''
+        SELECT AVG(p1), AVG(p2), AVG(p3), AVG(p4), AVG(p5), AVG(p6), AVG(p7), AVG(p8), AVG(p9), AVG(p10)
+        FROM satisfaction
+    ''')
+
+    data = cursor.fetchone()
+    con.close()
+
+    questions = [
+       "Recomendação", "Qualidade", "Atendimento", "Rapidez", "Preço", "Variedade", "Ambiente", "Busca", "Pagamento", "Custo-benefício"
+    ]
+
+    return jsonify({"labels": questions, "values": [round(m, 1) if m else 0 for m in data]}) 
+
+@app.route('/bars-data')
+def bars_data():
+    con = sqlite3.connect('database.db')
+    cursor = con.cursor() 
+
+    data = {}
+
+    for i in range(1, 11):
+        cursor.execute(f"""
+            SELECT p{i}, COUNT(*) FROM satisfaction GROUP BY p{i} ORDER BY p{i}
+        """)
+        results = cursor.fetchall()
+        data[f'p{i}'] = {nota: total for nota, total in results}
+    
+    con.close()
+    return jsonify(data)
 
 if __name__ == '__main__':
     configure_database()
